@@ -1,2 +1,2 @@
 # docker-php
-PHP Dockerized
+PHP Dockerized.
