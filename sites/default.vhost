@@ -1,45 +1,39 @@
 server {
-  server_name blog;
-  root        /var/www/blog/public;
-  index       index.php;
-
-  client_max_body_size 100M;
-  fastcgi_read_timeout 1800;
-
+  
+  root /var/www/blog/public;
+  index index.php;
   location / {
-    #try_files $uri $uri/ /index.php$is_args$args;
-    try_files $uri $uri/ /index.php?$query_string;
+    index       index.php;
+    try_files $uri $uri/ /index.php?$args;
+    location ~ [^/]\.php(/|$) {
+      include       fastcgi_params;
+      fastcgi_index index.php;
+      fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+      fastcgi_pass  unix:/var/run/php5-fpm.sock;
+    }
   }
 
-  location /status {
-     access_log off;
-     allow 172.17.0.0/16;
-     deny all;
-     include /etc/nginx/fastcgi_params;
-     fastcgi_param SCRIPT_FILENAME /status;
-     fastcgi_pass unix:/var/run/php5-fpm.sock;
+  location /demo {
+    alias /var/www/demo;
+    try_files $uri $uri/ /index.php;
+    if (!-e $request_filename){
+            rewrite ^.*demo/(.*)$ /demo/index.php?_url=/$1 last;
+    }
+    location ~ \.php$ {
+
+        root /var/www/demo;
+        fastcgi_pass  unix:/var/run/php5-fpm.sock;
+        fastcgi_index index.php;
+
+        include fastcgi_params;
+        fastcgi_split_path_info       ^demo/(.+\.php)(.+)$;
+        fastcgi_param PATH_TRANSLATED $document_root$fastcgi_path_info;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+    }
+    location ~* ^.+\.(ogg|ogv|svgz|eot|otf|woff|mp4|ttf|rss|atom|jpg|jpeg|gif|png|ico|zip|tgz|gz|rar|bz2|doc|xls|exe|ppt|tar|mid|midi|wav|bmp|rtf)$ {
+       access_log off; log_not_found off; expires max;add_header Cache-Control "public";
+    }
   }
 
-  location /ping {
-     access_log off;
-     allow all;
-     include fastcgi_params;
-     fastcgi_param SCRIPT_FILENAME /ping;
-     fastcgi_pass unix:/var/run/php5-fpm.sock;
-  }
-
-  location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
-    expires       max;
-    log_not_found off;
-    access_log    off;
-  }
-
-  location ~ \.php$ {
-    try_files     $uri =404;
-    include       fastcgi_params;
-    fastcgi_index index.php;
-    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-    fastcgi_pass  unix:/var/run/php5-fpm.sock;
-    # fastcgi_pass  unix:/var/run/hhvm/hhvm.sock;
-  }
+  
 }
